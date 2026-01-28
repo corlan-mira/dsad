@@ -1,0 +1,9 @@
+xc=x-x.mean(axis=0)
+cov=np.cov(xc, rowvar=Flase)
+eigvals, eigvects=np.linalg.eig(cov)
+idx=np.argsort(eigvals)[::-1]
+eigvals=eigvals[idx]
+eigvecs=eigvecs[:, idx]
+explained_variance=eigvals/eigvals.sum()
+cumm_expl_var=explained_variance.cumsum()
+pc=xc@eigvecs
