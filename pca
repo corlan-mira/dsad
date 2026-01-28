@@ -1,0 +1,34 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.decomposition import PCA
+def nan_replace(df):
+  for col in df.columns:
+        if df[col].isna().any():
+            if is_numeric_dtype(df[col]):
+                df[col].fillna(df[col].mean(), inplace=True)
+            else:
+                df[col].fillna(df[col].mode()[0], inplace=True)
+def to_dataframe(x, row_names, col_names, filename):
+    df = pd.DataFrame(x, index=row_names, columns=col_names)
+    df.to_csv(filename)
+    return df
+
+
+t=pd.read_csv("dataset.csv", index_col=1)
+nan_replace(t)
+variable_names=list(t.columns)
+x_raw=t[variable_names]
+
+x=(x_raw-np.mean(x_raw, axis=0))/np.std(x_raw, axis=0)
+n,m=x.shape
+
+model_pca=PCA()
+model_pca.fit(x)
+
+eigenvalues=model_pca.explained_variance_
+eigenvectors=model_pca.components_
+pc=model_pca.transform(x)
+
+
