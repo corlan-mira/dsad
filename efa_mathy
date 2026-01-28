@@ -1,0 +1,9 @@
+xs=(x-x.mean())/x.std()
+cor=np.cor(xs.T)
+eigvals, eigvecs= np.linalg.eig(cor)
+idx=np.argsort(eigvals)[::-1]
+eigvals=eigvals[idx]
+eigvecs=eigvecs[:, -1]
+q=2
+loadings=eigecs[:, :q]*np.sqrt(eigvals[:q])
+communalities=np.sum(loadings**2, axis=1)
