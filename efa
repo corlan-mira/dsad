@@ -1,0 +1,156 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sb
+from factor_analyzer import FactorAnalyzer, calculate_kmo, calculate_bartlett_sphericity
+from pandas.core.dtypes.common import is_numeric_dtype
+
+
+# pip install factor_analyzer
+
+def nan_replace(df):
+    for col in df.columns:
+        if df[col].isna().any():
+            if is_numeric_dtype(df[col]):
+                df[col].fillna(df[col].mean(), inplace=True)
+            else:
+                df[col].fillna(df[col].mode()[0], inplace=True)
+
+
+def to_dataframe(x, row_names, col_names, filename):
+    df = pd.DataFrame(x, index=row_names, columns=col_names)
+    df.to_csv(filename)
+    return df
+
+
+def scree_plot(eigenvalues):
+    """
+    We draw eigenvalues in descending order.
+    And we use this chart to decide how many factors are significant using the Kaiser criterion:
+    according to Kaiser criterion, significant factors are those whose eigenvalue is > 1
+    """
+    plt.figure(figsize=(8,6))
+    plt.plot(range(1, len(eigenvalues) + 1), eigenvalues, marker='o')
+    plt.title("Scree plot")
+    plt.xlabel("Factor")
+    plt.ylabel("Eigen value")
+    # we choose 1 because in Kaiser criterion 1 is the threshold value
+    plt.axhline(1, color='red', linestyle='--')
+    plt.show()
+
+
+def heatmap(df, vmin=0, vmax=1, title="Heatmap"):
+    """
+    General purpose chart used to interpret the link between:
+    - correlations
+    - communalities
+    - loadings
+    """
+    plt.figure(figsize=(8,6))
+    sb.heatmap(df, vmin=vmin, vmax=vmax, annot=True, cmap="RdYlGn")
+    plt.title(title)
+    plt.show()
+
+
+def main():
+    # read the data
+    df = pd.read_csv("res/Freelancer.csv", index_col=1)
+    nan_replace(df)
+
+    # C,C_Test,Html,Html_test,Java,Java_test,PHP,PHP_test,InternetPenetration,InternetUsers,UploadSpeed,Download,FixedBroadbandSubscriptions,ChargesIntellProperty,GovernmentExpenditureOnEducation,GrossEnrolmentRatio,HighTechnologyExports,GINIindex,IncomeShareLow20,SurveyMeanIncome,Unemployment,UnemploymentTertiaryEducation,GDP_BM
+    variable_names = list(df.columns)[2:]
+    x = df[variable_names].values
+
+    # tests that answer the following question: Can I use Factor Analysis on my data set?
+    # there are 2 tests: Bartlett and KMO
+    # Bartlett test verifies whether the correlation matrix differs significantly from
+    # the identity matrix I
+    # Bartlett is a Student type of test, having H0: no correlation between original
+    # variables and H1: correlation between
+
+    # KMO test measures whether there are partial correlations within the data
+
+    chi2, p_value = calculate_bartlett_sphericity(x)
+    print(f"Bartlett: chi2 = {chi2}, p_value = {p_value}")
+    if p_value > 0.05:
+        print("Bartlett p_value is too high, so we cannot reject H0 and therefore we "
+              "cannot use FA on our data")
+        return
+
+    kmo_all, kmo_overall = calculate_kmo(x)
+    if kmo_overall < 0.6:
+        print("KMO overall is too low, so we cannot use FA on our data")
+        return
+
+    # determine the number of significant factors
+    fa_n = FactorAnalyzer(rotation=None)
+    fa_n.fit(x)
+
+    eigenvalues, _ = fa_n.get_eigenvalues()
+    print("Eigenvalues:\n", eigenvalues)
+
+    # using Kaiser criterion
+    n_factors = sum(eigenvalues > 1)
+    print("Number of significant factors: ", n_factors)
+
+    scree_plot(eigenvalues)
+
+    # fit final Factor Analysis model - using n_factors and rotation='varimax'
+    fa = FactorAnalyzer(n_factors=n_factors, rotation='varimax')
+    fa.fit(x)
+
+    # factor_labels = ["F1", "F2", "F3", "F4", "F5", "F6", "F7"]
+    factor_labels = [f"F{i+1}" for i in range(n_factors)]
+
+    # loadings matrix = how important each factor is for each variable
+    loadings = fa.loadings_
+    loadings_df = to_dataframe(loadings, variable_names, factor_labels, "Loadings.csv")
+    heatmap(loadings_df, vmin=-1, vmax=1, title="Factor loadings")
+
+    # communalities = shows the proportion of explained variance by all retained factors
+    #                   for each variable
+    communalities = fa.get_communalities()
+    communalities_df = to_dataframe(communalities, variable_names, ["Communalities"],
+                                    "Communalities.csv")
+    heatmap(communalities_df, vmin=0, vmax=1, title="Communalities")
+
+    # explained variance - used to justify the selected factor solution
+    # - variance per factor
+    # - proportion of variance
+    # - cumulative variance
+
+    variance, prop_var, cumulative_var = fa.get_factor_variance()
+    variance_df = pd.DataFrame(
+        data = {
+            "Variance": variance,
+            "Proportion": prop_var,
+            "Cumulative": cumulative_var
+        },
+        index = factor_labels
+    )
+    variance_df.to_csv("Variance.csv")
+
+    # factor scores = coordinates of each individual instance (row) in factor space.
+    scores = fa.transform(x)
+    scores_df = to_dataframe(scores, df.index, factor_labels, "Scores.csv")
+
+    # simple chart of the first 2 factor scores
+    plt.figure(figsize=(8,6))
+
+    plt.scatter(scores_df["F1"], scores_df["F2"])
+
+    for i in range(len(scores_df)):
+        plt.text(scores_df["F1"].iloc[i], scores_df["F2"].iloc[i], scores_df.index[i])
+
+    plt.title("Factor scores: F1 vs F2")
+    plt.xlabel("F1")
+    plt.ylabel("F2")
+    plt.show()
+
+
+main()
+
+
+
+
+
