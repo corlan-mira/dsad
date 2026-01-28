@@ -1,0 +1,17 @@
+classes=np.unique(y)
+mean.total=x.mean(axis=0)
+
+sw=np.zeros((x.shape[1], x.shape[1]))
+sb=np.zeros((x.shape[1], x.shape[1]))
+
+for c in classes:
+  xc=x[y==c]
+  mean_c=xc.mean(axis=0)
+  sw+=(xc-mean_c).T@(xc-mean_c)
+  n_c=xc.shpae[0]
+  diff=(mean_c-mean_total).reshape(-1, 1)
+  sb+=n_c*diff@diff.T
+eigvals, eigvecs=np.linalg.eig(np.linalg.inv(sw)@sb)
+w=eigvecs[:, np.argmax(eigvals)]
+z=x@w
+u=y@w
