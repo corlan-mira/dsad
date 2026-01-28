@@ -1,0 +1,11 @@
+xc=x-x.mean(axis=0)
+yc=y-y.mean(axis=0)
+sxx=np.cox(xc, rowvar=False)
+syy=np.cov(yc, rowvar=False)
+sxy=np.cov(xc.T, yc.T)[:x.shape[1], x.shape[1]:]
+syx=sxy.T
+M=np.linalg.inv(sxx)@sxy@np.linalg.inv(syy)@syx
+eigvals, eigvecs=np.linalg.eig(M)
+canonical_corrs=np.sqrt(np.real(eigvals))
+z=xc@eigvecs
+u=yx@eigvecs
