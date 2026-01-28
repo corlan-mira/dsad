@@ -1,0 +1,43 @@
+def nan_replace(df):
+    for col in df.columns:
+        if df[col].isna().any():
+            if is_numeric_dtype(df[col]):
+                df[col].fillna(df[col].mean(), inplace=True)
+            else:
+                df[col].fillna(df[col].mode()[0], inplace=True)
+
+
+def to_dataframe(x, row_names, col_names, filename):
+    df = pd.DataFrame(x, index=row_names, columns=col_names)
+    df.to_csv(filename)
+    return df
+
+
+def scree_plot(eigenvalues):
+    """
+    We draw eigenvalues in descending order.
+    And we use this chart to decide how many factors are significant using the Kaiser criterion:
+    according to Kaiser criterion, significant factors are those whose eigenvalue is > 1
+    """
+    plt.figure(figsize=(8,6))
+    plt.plot(range(1, len(eigenvalues) + 1), eigenvalues, marker='o')
+    plt.title("Scree plot")
+    plt.xlabel("Factor")
+    plt.ylabel("Eigen value")
+    # we choose 1 because in Kaiser criterion 1 is the threshold value
+    plt.axhline(1, color='red', linestyle='--')
+    plt.show()
+
+
+def heatmap(df, vmin=0, vmax=1, title="Heatmap"):
+    """
+    General purpose chart used to interpret the link between:
+    - correlations
+    - communalities
+    - loadings
+    """
+    plt.figure(figsize=(8,6))
+    sb.heatmap(df, vmin=vmin, vmax=vmax, annot=True, cmap="RdYlGn")
+    plt.title(title)
+    plt.show()
+
